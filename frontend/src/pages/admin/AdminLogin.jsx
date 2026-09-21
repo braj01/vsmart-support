@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ReCAPTCHA from 'react-google-recaptcha';
 import { useAuth } from '../../context/AuthContext';
+import logo from '../../assets/images/logo.png';
 import './AdminLogin.css';
 
 export default function AdminLogin() {
@@ -38,7 +39,7 @@ export default function AdminLogin() {
     <div className="login-page">
       <div className="login-card">
         <div className="login-brand">
-          <img src="/src/assets/images/logo.png" alt="vSmart" className="login-logo" />
+          <img src={logo} alt="vSmart" className="login-logo" />
         </div>
         <h2>Welcome back</h2>
         <p className="login-sub">Sign in to vSmart Support</p>
