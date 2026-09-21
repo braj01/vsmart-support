@@ -1,0 +1,36 @@
+{
+  "name": "helpdesk-frontend",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.21.1",
+    "axios": "^1.6.5",
+    "@tiptap/react": "^2.1.13",
+    "@tiptap/starter-kit": "^2.1.13",
+    "@tiptap/extension-underline": "^2.1.13",
+    "@tiptap/extension-strike": "^2.1.13",
+    "@tiptap/extension-link": "^2.1.13",
+    "@tiptap/extension-image": "^2.1.13",
+    "react-google-recaptcha": "^3.1.0",
+    "react-hot-toast": "^2.4.1",
+    "recharts": "^2.10.3",
+    "date-fns": "^3.2.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.2.1",
+    "vite": "^5.0.11",
+    "vitest": "^1.2.0",
+    "@testing-library/react": "^14.1.2",
+    "@testing-library/jest-dom": "^6.2.0",
+    "@testing-library/user-event": "^14.5.2",
+    "jsdom": "^23.0.1"
+  }
+}

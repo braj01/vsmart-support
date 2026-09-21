@@ -1,0 +1,28 @@
+.rte-wrapper { border: 1px solid #d1d5db; border-radius: 6px; overflow: hidden; }
+.rte-wrapper.error { border-color: #ef4444; }
+.rte-wrapper:focus-within { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+
+.rte-toolbar { display: flex; align-items: center; gap: 2px; padding: 6px 8px; background: #f9fafb; border-bottom: 1px solid #e5e7eb; flex-wrap: wrap; }
+
+.rte-btn {
+  padding: 4px 8px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  color: #374151;
+  min-width: 28px;
+  text-align: center;
+  transition: background 0.1s;
+}
+.rte-btn:hover { background: #e5e7eb; }
+.rte-btn.active { background: #dbeafe; color: #1d4ed8; border-color: #bfdbfe; }
+
+.rte-sep { width: 1px; height: 20px; background: #e5e7eb; margin: 0 4px; }
+
+.rte-content { min-height: 140px; padding: 12px; font-size: 14px; color: #111827; }
+.rte-content:focus { outline: none; }
+.rte-content .ProseMirror { outline: none; min-height: 120px; }
+.rte-content .ProseMirror p.is-editor-empty:first-child::before { content: attr(data-placeholder); color: #9ca3af; pointer-events: none; float: left; height: 0; }
+.rte-content ul, .rte-content ol { padding-left: 20px; }

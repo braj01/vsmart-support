@@ -1,0 +1,15 @@
+.tt-page { min-height: 100vh; background: #f3f4f6; }
+.tt-body { max-width: 800px; margin: 32px auto; padding: 0 24px; }
+.tt-error { text-align: center; padding: 80px 24px; }
+.tt-error h2 { margin-bottom: 12px; }
+.tt-error p { color: #6b7280; margin-bottom: 24px; }
+.tt-meta { display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid #e5e7eb; }
+.tt-meta-row { display: flex; gap: 16px; align-items: center; font-size: 14px; }
+.tt-meta-row > span:first-child { width: 130px; color: #6b7280; font-weight: 500; flex-shrink: 0; }
+.tt-description h3, .tt-comments h3 { font-size: 15px; font-weight: 600; margin-bottom: 12px; color: #374151; }
+.tt-description { margin-bottom: 24px; font-size: 14px; line-height: 1.7; }
+.tt-comments { display: flex; flex-direction: column; gap: 12px; }
+.tt-comment { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 14px; font-size: 14px; }
+.tt-comment-header { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; }
+.tt-comment-header strong { color: #1d4ed8; }
+.tt-comment-header span { color: #9ca3af; }

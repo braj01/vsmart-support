@@ -1,0 +1,100 @@
+.fd-ticketlist {}
+
+.fd-page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; }
+.fd-page-title { font-size: 20px; font-weight: 700; color: #111827; margin-bottom: 2px; }
+.fd-page-sub { font-size: 13px; color: #6b7280; }
+
+/* Tabs */
+.fd-tabs { display: flex; gap: 0; border-bottom: 2px solid #e5e7eb; margin-bottom: 16px; overflow-x: auto; }
+.fd-tab {
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6b7280;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
+}
+.fd-tab:hover { color: #374151; }
+.fd-tab.active { color: #2563eb; border-bottom-color: #2563eb; font-weight: 600; }
+
+/* Filters */
+.fd-filters-bar { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
+.fd-search-wrap { flex: 1; min-width: 220px; position: relative; display: flex; align-items: center; }
+.fd-search-icon { position: absolute; left: 10px; font-size: 14px; color: #9ca3af; pointer-events: none; }
+.fd-search-input {
+  width: 100%;
+  padding: 8px 32px 8px 32px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+  background: #fff;
+  color: #111827;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.fd-search-input:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+.fd-search-clear { position: absolute; right: 8px; background: none; border: none; color: #9ca3af; cursor: pointer; font-size: 12px; padding: 2px 4px; }
+.fd-search-clear:hover { color: #374151; }
+.fd-filter-select {
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+  background: #fff;
+  color: #374151;
+  cursor: pointer;
+}
+.fd-filter-select:focus { outline: none; border-color: #2563eb; }
+
+/* Table card */
+.fd-table-card { background: #fff; border-radius: 10px; border: 1px solid #e5e7eb; overflow: hidden; }
+
+.fd-table-loading { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 60px; color: #6b7280; font-size: 14px; }
+.fd-spinner { width: 20px; height: 20px; border: 2px solid #e5e7eb; border-top-color: #2563eb; border-radius: 50%; animation: spin 0.6s linear infinite; flex-shrink: 0; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.fd-error-state, .fd-empty-state { text-align: center; padding: 60px 24px; }
+.fd-error-icon, .fd-empty-icon-lg { font-size: 36px; margin-bottom: 12px; }
+.fd-error-state h3, .fd-empty-state h3 { font-size: 16px; color: #374151; margin-bottom: 6px; }
+.fd-error-state p, .fd-empty-state p { color: #6b7280; font-size: 13px; margin-bottom: 16px; }
+
+.fd-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.fd-table thead tr { background: #f9fafb; border-bottom: 1px solid #e5e7eb; }
+.fd-table th { padding: 10px 14px; text-align: left; font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
+.fd-table td { padding: 13px 14px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
+.fd-table-row { cursor: pointer; transition: background 0.1s; }
+.fd-table-row:hover td { background: #f0f7ff; }
+.fd-table-row:last-child td { border-bottom: none; }
+
+.fd-ticket-num { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; color: #2563eb; font-weight: 600; background: #eff6ff; padding: 2px 8px; border-radius: 4px; }
+.fd-ticket-subject { font-weight: 500; color: #111827; }
+
+.fd-requester { display: flex; align-items: center; gap: 8px; }
+.fd-requester-avatar { width: 26px; height: 26px; background: #e0e7ff; color: #4338ca; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+.fd-requester-email { color: #374151; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 160px; }
+
+.fd-agent { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #374151; }
+.fd-agent-avatar { width: 22px; height: 22px; background: #d1fae5; color: #065f46; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0; }
+.fd-unassigned { color: #9ca3af; font-size: 12px; font-style: italic; }
+.fd-date { color: #6b7280; font-size: 12px; white-space: nowrap; }
+
+/* Pagination */
+.fd-pagination { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-top: 1px solid #f3f4f6; flex-wrap: wrap; gap: 10px; }
+.fd-pagination-info { font-size: 13px; color: #6b7280; }
+.fd-pagination-btns { display: flex; gap: 4px; }
+.fd-page-btn { padding: 5px 10px; border: 1px solid #e5e7eb; background: #fff; border-radius: 5px; font-size: 13px; cursor: pointer; color: #374151; transition: all 0.1s; }
+.fd-page-btn:hover:not(:disabled) { background: #f3f4f6; border-color: #d1d5db; }
+.fd-page-btn.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+.fd-page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Shared btn styles used in this file */
+.fd-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.15s; text-decoration: none; }
+.fd-btn-primary { background: #2563eb; color: #fff; }
+.fd-btn-primary:hover { background: #1d4ed8; }
+.fd-btn-secondary { background: #fff; color: #374151; border: 1px solid #d1d5db; }
+.fd-btn-secondary:hover { background: #f9fafb; }
+.fd-btn-sm { padding: 5px 12px; font-size: 12px; }

@@ -1,0 +1,30 @@
+.st-page { min-height: 100vh; background: #f3f4f6; }
+
+.st-header { background: #fff; border-bottom: 1px solid #e5e7eb; padding: 0; }
+.st-header-inner { max-width: 1100px; margin: 0 auto; padding: 0 24px; display: flex; align-items: center; gap: 16px; height: 56px; }
+.st-brand { display: flex; align-items: center; }
+.st-logo { height: 32px; width: auto; object-fit: contain; }
+.st-header-title { color: #1e3a8a; font-size: 18px; font-weight: 700; border-left: 1px solid #e5e7eb; padding-left: 16px; white-space: nowrap; }
+
+.st-body { max-width: 1100px; margin: 16px auto; padding: 0 24px; }
+
+.st-card { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); padding: 32px; }
+
+.st-mandatory-note { font-size: 14px; color: #374151; margin-bottom: 24px; }
+
+.st-actions { display: flex; gap: 12px; margin-top: 24px; }
+
+/* Success */
+.st-success { text-align: center; padding: 48px 32px; }
+.st-success-icon { width: 64px; height: 64px; background: #d1fae5; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; color: #059669; margin: 0 auto 20px; }
+.st-success h2 { font-size: 22px; color: #111827; margin-bottom: 8px; }
+.st-success p { color: #6b7280; margin-bottom: 24px; }
+.st-ticket-number { background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 16px 24px; display: inline-flex; gap: 12px; align-items: center; font-size: 16px; margin-bottom: 28px; }
+.st-ticket-number strong { color: #0369a1; font-size: 18px; }
+.st-success-actions { display: flex; gap: 12px; justify-content: center; }
+
+@media (max-width: 640px) {
+  .st-title-bar h1 { font-size: 22px; }
+  .st-card { padding: 20px; }
+  .st-success-actions { flex-direction: column; align-items: center; }
+}
