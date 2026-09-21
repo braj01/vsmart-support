@@ -6,6 +6,7 @@ import api from '../services/api';
 import RichTextEditor from '../components/RichTextEditor';
 import FileUpload from '../components/FileUpload';
 import EmailTagInput from '../components/EmailTagInput';
+import logo from '../assets/images/logo.png';
 import './SubmitTicket.css';
 
 const PRIORITIES = ['Low', 'Medium', 'High', 'Urgent'];
@@ -67,7 +68,7 @@ export default function SubmitTicket() {
       <div className="st-page">
         <header className="st-header">
           <div className="st-header-inner">
-            <div className="st-brand"><img src="/src/assets/images/logo.png" alt="vSmart" className="st-logo" /></div>
+            <div className="st-brand"><img src={logo} alt="vSmart" className="st-logo" /></div>
             <span className="st-header-title">Ticket Submitted</span>
           </div>
         </header>
@@ -94,7 +95,7 @@ export default function SubmitTicket() {
     <div className="st-page">
       <header className="st-header">
         <div className="st-header-inner">
-          <div className="st-brand"><img src="/src/assets/images/logo.png" alt="vSmart" className="st-logo" /></div>
+            <div className="st-brand"><img src={logo} alt="vSmart" className="st-logo" /></div>
           <span className="st-header-title">Submit a Ticket</span>
         </div>
       </header>

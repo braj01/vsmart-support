@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import logo from '../assets/images/logo.png';
+import favicon from '../assets/images/favicon.ico';
 import './AdminLayout.css';
 
 const NAV = [
@@ -33,7 +35,7 @@ export default function AdminLayout() {
       <aside className="al-sidebar">
         <div className="al-logo">
           <img
-            src={expanded ? '/src/assets/images/logo.png' : '/src/assets/images/favicon.ico'}
+            src={expanded ? logo : favicon}
             alt="vSmart"
             className={expanded ? 'al-logo-img' : 'al-logo-favicon'}
           />
