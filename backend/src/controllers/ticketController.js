@@ -80,10 +80,9 @@ async function submitTicket(req, res) {
     return successResponse(res, { ticketNumber: ticket_number, publicToken: public_token }, 'Ticket created successfully', 201);
   } catch (err) {
     await t.rollback();
-    // Clean up uploaded files on failure
     files.forEach(f => { try { fs.unlinkSync(f.path); } catch {} });
     logger.error(`Ticket creation failed: ${err.message}`);
-    return errorResponse(res, err.message);
+    return errorResponse(res, 'Failed to create ticket', 500);
   }
 }
 
@@ -99,7 +98,8 @@ async function getTicketByToken(req, res) {
     if (!ticket) return errorResponse(res, 'Ticket not found', 404);
     return successResponse(res, ticket);
   } catch (err) {
-    return errorResponse(res, err.message);
+    logger.error(`getTicketByToken failed: ${err.message}`);
+    return errorResponse(res, 'Failed to retrieve ticket', 500);
   }
 }
 
