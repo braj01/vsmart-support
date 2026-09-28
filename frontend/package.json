@@ -10,28 +10,29 @@
     "start": "vite preview --host 0.0.0.0 --port 3007"
   },
   "dependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-router-dom": "^6.21.1",
-    "axios": "^1.6.5",
+    "@tiptap/extension-image": "^2.1.13",
+    "@tiptap/extension-link": "^2.1.13",
+    "@tiptap/extension-strike": "^2.1.13",
+    "@tiptap/extension-underline": "^2.1.13",
     "@tiptap/react": "^2.1.13",
     "@tiptap/starter-kit": "^2.1.13",
-    "@tiptap/extension-underline": "^2.1.13",
-    "@tiptap/extension-strike": "^2.1.13",
-    "@tiptap/extension-link": "^2.1.13",
-    "@tiptap/extension-image": "^2.1.13",
+    "axios": "^1.6.5",
+    "date-fns": "^3.2.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
     "react-google-recaptcha": "^3.1.0",
+    "react-google-recaptcha-v3": "^1.11.0",
     "react-hot-toast": "^2.4.1",
-    "recharts": "^2.10.3",
-    "date-fns": "^3.2.0"
+    "react-router-dom": "^6.21.1",
+    "recharts": "^2.10.3"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.2.1",
-    "vite": "^5.0.11",
-    "vitest": "^1.2.0",
-    "@testing-library/react": "^14.1.2",
     "@testing-library/jest-dom": "^6.2.0",
+    "@testing-library/react": "^14.1.2",
     "@testing-library/user-event": "^14.5.2",
-    "jsdom": "^23.0.1"
+    "@vitejs/plugin-react": "^4.2.1",
+    "jsdom": "^23.0.1",
+    "vite": "^5.0.11",
+    "vitest": "^1.2.0"
   }
 }

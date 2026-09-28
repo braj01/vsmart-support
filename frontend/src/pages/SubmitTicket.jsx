@@ -1,6 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import ReCAPTCHA from 'react-google-recaptcha';
+import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 import toast from 'react-hot-toast';
 import api from '../services/api';
 import RichTextEditor from '../components/RichTextEditor';
@@ -13,13 +13,20 @@ const PRIORITIES = ['Low', 'Medium', 'High', 'Urgent'];
 
 export default function SubmitTicket() {
   const navigate = useNavigate();
-  const captchaRef = useRef(null);
+  const { executeRecaptcha } = useGoogleReCaptcha();
   const [form, setForm] = useState({ subject: '', priority: 'LOW', description: '' });
-  const [emails, setEmails] = useState([]); // first = requester, rest = CC
+  const [emails, setEmails] = useState([]);
   const [files, setFiles] = useState([]);
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(null);
+  const [cooldown, setCooldown] = useState(0);
+
+  React.useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setTimeout(() => setCooldown(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [cooldown]);
 
   function validate() {
     const e = {};
@@ -34,11 +41,9 @@ export default function SubmitTicket() {
     const errs = validate();
     if (Object.keys(errs).length) { setErrors(errs); return; }
 
-    const captchaToken = captchaRef.current?.getValue();
-    // if (!captchaToken) {
-    //   setErrors({ captcha: 'Please complete the CAPTCHA' });
-    //   return;
-    // }
+    if (!executeRecaptcha) { toast.error('reCAPTCHA not ready, please try again.'); return; }
+    const token = await executeRecaptcha('submit_ticket');
+    if (!token) { toast.error('reCAPTCHA failed, please try again.'); return; }
 
     setSubmitting(true);
     const fd = new FormData();
@@ -46,7 +51,7 @@ export default function SubmitTicket() {
     fd.append('requester_email', emails[0]);
     fd.append('priority', form.priority);
     fd.append('description', form.description);
-    fd.append('captcha_token', captchaToken || 'bypass');
+    fd.append('captcha_token', token);
     if (emails.length > 1) fd.append('cc_emails', emails.slice(1).join(','));
     files.forEach(f => fd.append('attachments[]', f));
 
@@ -57,7 +62,7 @@ export default function SubmitTicket() {
       const serverErrors = err.response?.data?.errors || {};
       if (Object.keys(serverErrors).length) setErrors(serverErrors);
       else toast.error(err.response?.data?.message || 'Submission failed. Please try again.');
-      captchaRef.current?.reset();
+      setCooldown(30);
     } finally {
       setSubmitting(false);
     }
@@ -82,7 +87,7 @@ export default function SubmitTicket() {
               <strong>{success.ticketNumber}</strong>
             </div>
             <div className="st-success-actions">
-              <button className="btn btn-primary" onClick={() => navigate(`/ticket/${success.publicToken}`)}>Track Ticket</button>
+              {/* <button className="btn btn-primary" onClick={() => navigate(`/ticket/${success.publicToken}`)}>Track Ticket</button> */}
               <button className="btn btn-secondary" onClick={() => { setSuccess(null); setForm({ subject: '', priority: 'LOW', description: '' }); setEmails([]); setFiles([]); }}>Submit Another</button>
             </div>
           </div>
@@ -95,7 +100,7 @@ export default function SubmitTicket() {
     <div className="st-page">
       <header className="st-header">
         <div className="st-header-inner">
-            <div className="st-brand"><img src={logo} alt="vSmart" className="st-logo" /></div>
+          <div className="st-brand"><img src={logo} alt="vSmart" className="st-logo" /></div>
           <span className="st-header-title">Submit a Ticket</span>
         </div>
       </header>
@@ -138,19 +143,10 @@ export default function SubmitTicket() {
 
             <FileUpload files={files} onChange={setFiles} />
 
-            <div className="form-group">
-              {/* reCAPTCHA — enable when site key is configured
-            {import.meta.env.VITE_RECAPTCHA_SITE_KEY && (
-                <ReCAPTCHA ref={captchaRef} sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY} />
-              )}
-            */}
-              {errors.captcha && <p className="form-error">{errors.captcha}</p>}
-            </div>
-
             <div className="st-actions">
               <button type="button" className="btn btn-secondary" onClick={() => navigate('/')}>Cancel</button>
-              <button type="submit" className="btn btn-primary" disabled={submitting}>
-                {submitting ? <><span className="spinner" style={{width:14,height:14}} /> Submitting...</> : 'Submit'}
+              <button type="submit" className="btn btn-primary" disabled={submitting || cooldown > 0}>
+                {submitting ? <><span className="spinner" style={{width:14,height:14}} /> Submitting...</> : cooldown > 0 ? `Please wait ${cooldown}s...` : 'Submit'}
               </button>
             </div>
           </form>

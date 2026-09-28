@@ -10,12 +10,37 @@ const { generatePublicToken, successResponse, errorResponse } = require('../util
 const { uploadDir } = require('../middleware/upload');
 const logger = require('../utils/logger');
 
+// Layer 3 — per-email rate limit: max 3 tickets per email per hour (in-memory)
+const emailSubmitMap = new Map();
+const EMAIL_LIMIT = 20;
+const EMAIL_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+
+function isEmailRateLimited(email) {
+  const now = Date.now();
+  const record = emailSubmitMap.get(email) || { count: 0, windowStart: now };
+  if (now - record.windowStart > EMAIL_WINDOW_MS) {
+    // Reset window
+    emailSubmitMap.set(email, { count: 1, windowStart: now });
+    return false;
+  }
+  if (record.count >= EMAIL_LIMIT) return true;
+  record.count++;
+  emailSubmitMap.set(email, record);
+  return false;
+}
+
 async function submitTicket(req, res) {
   const { subject, requester_email, priority = 'LOW', description, captcha_token, cc_emails } = req.body;
   const files = req.files || [];
 
   const captchaOk = await verifyCaptcha(captcha_token);
   if (!captchaOk) return errorResponse(res, 'CAPTCHA verification failed', 422, { captcha_token: ['Please complete the CAPTCHA'] });
+
+  // Layer 3 — per-email rate limit
+  if (isEmailRateLimited(requester_email.toLowerCase())) {
+    logger.warn(`Email rate limit hit: ${requester_email}`);
+    return errorResponse(res, 'Too many tickets submitted from this email. Please try again later.', 429);
+  }
 
   const t = await sequelize.transaction();
   try {
