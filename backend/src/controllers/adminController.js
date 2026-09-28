@@ -55,8 +55,8 @@ async function updateTicket(req, res) {
   const { subject, priority, status, assigned_to } = req.body;
   const updates = {};
   if (subject) updates.subject = subject;
-  if (priority) updates.priority = priority;
-  if (status) updates.status = status;
+  if (priority && ['LOW', 'MEDIUM', 'HIGH', 'URGENT'].includes(priority)) updates.priority = priority;
+  if (status && ['OPEN', 'ACKNOWLEDGED', 'CLOSED'].includes(status)) updates.status = status;
   if (assigned_to !== undefined) updates.assigned_to = assigned_to || null;
   await ticket.update(updates);
   return successResponse(res, ticket, 'Ticket updated successfully');
@@ -81,12 +81,14 @@ async function changeStatus(req, res) {
     return successResponse(res, ticket, 'Status updated');
   } catch (err) {
     await t.rollback();
-    return errorResponse(res, err.message);
+    logger.error(`changeStatus error: ${err.message}`);
+    return errorResponse(res, 'Failed to update status', 500);
   }
 }
 
 async function changePriority(req, res) {
   const { priority } = req.body;
+  if (!['LOW', 'MEDIUM', 'HIGH', 'URGENT'].includes(priority)) return errorResponse(res, 'Invalid priority', 400);
   const ticket = await Ticket.findByPk(req.params.id);
   if (!ticket) return errorResponse(res, 'Ticket not found', 404);
   const old = ticket.priority;
@@ -104,9 +106,8 @@ async function assignTicket(req, res) {
   await ticket.update({ assigned_to: assigned_to || null });
   await TicketAuditLog.create({ ticket_id: ticket.id, user_id: req.user.id, action: 'TICKET_ASSIGNED', old_value: old ? String(old) : null, new_value: assigned_to ? String(assigned_to) : null });
   if (assigned_to) {
-    const agent = agents.find ? null : await User.findByPk(assigned_to, { attributes: ['name'] });
-    const agentName = agent?.name || agents?.find?.(a => a.id == assigned_to)?.name;
-    sendTicketAssignedEmail(ticket, agentName).catch(err => logger.error(err.message));
+    const agent = await User.findByPk(assigned_to, { attributes: ['name'] });
+    sendTicketAssignedEmail(ticket, agent?.name).catch(err => logger.error(err.message));
   }
   return successResponse(res, ticket, 'Ticket assigned');
 }
@@ -122,7 +123,6 @@ async function addComment(req, res) {
     const newComment = await TicketComment.create({ ticket_id: ticket.id, user_id: req.user.id, comment: clean, type, reply_to: reply_to || ticket.requester_email, reply_cc: reply_cc || ticket.cc_emails || null }, { transaction: t });
     await TicketAuditLog.create({ ticket_id: ticket.id, user_id: req.user.id, action: type === 'INTERNAL_NOTE' ? 'INTERNAL_NOTE_ADDED' : 'REPLY_ADDED' }, { transaction: t });
 
-    // Auto-acknowledge on first admin public reply
     if (type === 'PUBLIC_REPLY' && ticket.status === 'OPEN') {
       const newStatus = close_after ? 'CLOSED' : 'ACKNOWLEDGED';
       await ticket.update({ status: newStatus, ...(close_after ? { closed_at: new Date() } : {}) }, { transaction: t });
@@ -143,7 +143,8 @@ async function addComment(req, res) {
     return successResponse(res, newComment, 'Comment added', 201);
   } catch (err) {
     await t.rollback();
-    return errorResponse(res, err.message);
+    logger.error(`addComment error: ${err.message}`);
+    return errorResponse(res, 'Failed to add comment', 500);
   }
 }
 
@@ -163,8 +164,10 @@ async function uploadAttachment(req, res) {
 async function downloadAttachment(req, res) {
   const att = await TicketAttachment.findOne({ where: { id: req.params.attachmentId, ticket_id: req.params.id } });
   if (!att) return errorResponse(res, 'Attachment not found', 404);
-  if (!fs.existsSync(att.file_path)) return errorResponse(res, 'File not found on server', 404);
-  res.download(att.file_path, att.original_file_name);
+  const resolved = path.resolve(att.file_path);
+  if (!resolved.startsWith(path.resolve(uploadDir) + path.sep)) return errorResponse(res, 'Access denied', 403);
+  if (!fs.existsSync(resolved)) return errorResponse(res, 'File not found on server', 404);
+  res.download(resolved, att.original_file_name);
 }
 
 async function getDashboard(req, res) {
@@ -180,7 +183,7 @@ async function getDashboard(req, res) {
     return successResponse(res, { stats, statusCounts, priorityCounts, recentTickets });
   } catch (err) {
     logger.error(`Dashboard error: ${err.message}`);
-    return errorResponse(res, err.message);
+    return errorResponse(res, 'Failed to load dashboard', 500);
   }
 }
 

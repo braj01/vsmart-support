@@ -1,6 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import ReCAPTCHA from 'react-google-recaptcha';
+import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 import { useAuth } from '../../context/AuthContext';
 import logo from '../../assets/images/logo.png';
 import './AdminLogin.css';
@@ -8,28 +8,24 @@ import './AdminLogin.css';
 export default function AdminLogin() {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const captchaRef = useRef(null);
+  const { executeRecaptcha } = useGoogleReCaptcha();
   const [form, setForm] = useState({ email: '', password: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [captchaError, setCaptchaError] = useState('');
-
-  const captchaEnabled = false; // !!import.meta.env.VITE_RECAPTCHA_SITE_KEY;
 
   async function handleSubmit(e) {
     e.preventDefault();
     if (!form.email || !form.password) { setError('Email and password are required'); return; }
-    if (captchaEnabled) {
-      const token = captchaRef.current?.getValue();
-      if (!token) { setCaptchaError('Please complete the CAPTCHA'); return; }
-    }
-    setLoading(true); setError(''); setCaptchaError('');
+    setLoading(true); setError('');
     try {
+      if (executeRecaptcha) {
+        const token = await executeRecaptcha('admin_login');
+        if (!token) { setError('reCAPTCHA failed, please try again.'); setLoading(false); return; }
+      }
       await login(form.email, form.password);
       navigate('/admin/dashboard');
     } catch (err) {
       setError(err.response?.data?.message || 'Invalid credentials. Please try again.');
-      captchaRef.current?.reset();
     } finally {
       setLoading(false);
     }
@@ -72,12 +68,6 @@ export default function AdminLogin() {
               onChange={e => { setForm(p => ({ ...p, password: e.target.value })); setError(''); }}
             />
           </div>
-          {captchaEnabled && (
-            <div className="login-captcha">
-              <ReCAPTCHA ref={captchaRef} sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY} onChange={() => setCaptchaError('')} />
-              {captchaError && <p className="form-error">{captchaError}</p>}
-            </div>
-          )}
           <button type="submit" className="login-submit" disabled={loading}>
             {loading ? <><span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} /> Signing in...</> : 'Sign In →'}
           </button>

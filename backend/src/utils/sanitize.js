@@ -5,7 +5,13 @@ const window = new JSDOM('').window;
 const DOMPurify = createDOMPurify(window);
 
 function sanitizeHtml(dirty) {
-  return DOMPurify.sanitize(dirty, { ALLOWED_TAGS: ['b','i','u','s','strong','em','ul','ol','li','p','br','a','img','h1','h2','h3','blockquote','code','pre'], ALLOWED_ATTR: ['href','src','alt','target'] });
+  return DOMPurify.sanitize(dirty, {
+    ALLOWED_TAGS: ['b','i','u','s','strong','em','ul','ol','li','p','br','a','h1','h2','h3','blockquote','code','pre'],
+    ALLOWED_ATTR: ['href'],
+    ALLOW_DATA_ATTR: false,
+    FORCE_BODY: true,
+    HOOK_EVENT_FIXER: undefined,
+  });
 }
 
 module.exports = { sanitizeHtml };
