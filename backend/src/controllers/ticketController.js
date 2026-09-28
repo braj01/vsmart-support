@@ -44,7 +44,7 @@ async function submitTicket(req, res) {
 
   const t = await sequelize.transaction();
   try {
-    const ticket_number = await generateTicketNumber();
+    const ticket_number = await generateTicketNumber(t);
     const public_token = generatePublicToken();
     const cleanDescription = sanitizeHtml(description);
 

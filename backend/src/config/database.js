@@ -11,7 +11,7 @@ const sequelize = new Sequelize(
     port: parseInt(process.env.DB_PORT) || 3306,
     dialect: 'mysql',
     logging: (msg) => logger.debug(msg),
-    pool: { max: 10, min: 0, acquire: 30000, idle: 10000 },
+    pool: { max: 10, min: 0, acquire: 60000, idle: 10000 },
     define: { timestamps: true, underscored: true },
   }
 );
