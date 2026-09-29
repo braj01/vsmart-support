@@ -17,7 +17,7 @@ router.patch('/tickets/:id', ctrl.updateTicket);
 router.patch('/tickets/:id/status', statusRules, validate, ctrl.changeStatus);
 router.patch('/tickets/:id/priority', priorityRules, validate, ctrl.changePriority);
 router.patch('/tickets/:id/assignment', ctrl.assignTicket);
-router.post('/tickets/:id/comments', commentRules, validate, ctrl.addComment);
+router.post('/tickets/:id/comments', upload.array('attachments[]', 10), validateUploadedFiles, commentRules, validate, ctrl.addComment);
 router.post('/tickets/:id/attachments', upload.array('attachments[]', 10), validateUploadedFiles, ctrl.uploadAttachment);
 router.get('/tickets/:id/attachments/:attachmentId', ctrl.downloadAttachment);
 

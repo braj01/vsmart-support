@@ -97,20 +97,24 @@ export default function TicketDetail() {
     if (commentType === 'PUBLIC_REPLY' && replyEmails.length === 0) { toast.error('At least one recipient email is required'); return; }
     setSubmitting(true);
     try {
-      await api.post(`/admin/tickets/${id}/comments`, {
-        comment,
-        type: commentType,
-        reply_to: replyEmails[0] || ticket.requester_email,
-        reply_cc: replyEmails.slice(1).join(','),
-        close_after: closeAfter,
-      });
+      const fd = new FormData();
+      fd.append('comment', comment);
+      fd.append('type', commentType);
+      fd.append('reply_to', replyEmails[0] || ticket.requester_email);
+      fd.append('reply_cc', replyEmails.slice(1).join(','));
+      fd.append('close_after', closeAfter);
+      replyFiles.forEach(f => fd.append('attachments[]', f));
+      await api.post(`/admin/tickets/${id}/comments`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
       toast.success(closeAfter ? 'Reply sent & ticket closed' : commentType === 'INTERNAL_NOTE' ? 'Note added' : 'Reply sent');
       setComment('');
+      setReplyFiles([]);
       load();
     } catch (e) { toast.error(e.response?.data?.message || 'Failed'); }
     finally { setSubmitting(false); }
   }
 
+  const [replyFiles, setReplyFiles] = useState([]);
+  const replyFileInputRef = React.useRef(null);
   const [attachPreview, setAttachPreview] = useState(null); // { url, name, type }
 
   async function downloadAttachment(attId, name) {
@@ -285,6 +289,23 @@ export default function TicketDetail() {
 
                 <div className={`fd-reply-editor${commentType === 'INTERNAL_NOTE' ? ' note-mode' : ''}`}>
                   <RichTextEditor value={comment} onChange={setComment} />
+                </div>
+                {/* Attachment picker */}
+                <div className="fd-reply-attachments">
+                  <input
+                    ref={replyFileInputRef}
+                    type="file"
+                    multiple
+                    style={{ display: 'none' }}
+                    onChange={e => setReplyFiles(prev => [...prev, ...Array.from(e.target.files)])}
+                  />
+                  <button type="button" className="fd-btn fd-btn-secondary fd-btn-sm" onClick={() => replyFileInputRef.current.click()}>📎 Attach</button>
+                  {replyFiles.map((f, i) => (
+                    <span key={i} className="fd-att-chip">
+                      {f.name}
+                      <button type="button" className="fd-att-chip-remove" onClick={() => setReplyFiles(prev => prev.filter((_, j) => j !== i))}>✕</button>
+                    </span>
+                  ))}
                 </div>
                 <div className="fd-reply-actions">
                   <button className="fd-btn fd-btn-primary" onClick={e => submitComment(e, false)} disabled={submitting}>
