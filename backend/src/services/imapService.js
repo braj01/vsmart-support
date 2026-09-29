@@ -210,6 +210,26 @@ async function processEmail(client, uid) {
   const ccList = (msg.envelope?.cc || []).map(a => a.address).filter(Boolean).join(', ');
   const ALLOWED_TYPES = (process.env.ALLOWED_FILE_TYPES || 'jpg,jpeg,png,gif,pdf,doc,docx,xls,xlsx,txt,zip,rar').split(',');
 
+  // Derive a file extension from MIME type when filename has none
+  const MIME_TO_EXT = {
+    'image/jpeg': 'jpg', 'image/png': 'png', 'image/gif': 'gif', 'image/webp': 'webp',
+    'application/pdf': 'pdf',
+    'application/msword': 'doc',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+    'application/vnd.ms-excel': 'xls',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
+    'text/plain': 'txt',
+    'application/zip': 'zip',
+    'application/x-rar-compressed': 'rar',
+    'application/octet-stream': 'bin',
+  };
+
+  function resolveExt(filename, mime) {
+    const ext = path.extname(filename).toLowerCase().slice(1);
+    if (ext) return ext;
+    return MIME_TO_EXT[mime] || MIME_TO_EXT[mime.split(';')[0].trim()] || 'bin';
+  }
+
   if (!ref) {
     // No ticket ref — create a new ticket from this email
     await sequelize.transaction(async (t) => {
@@ -235,8 +255,9 @@ async function processEmail(client, uid) {
       t.afterCommit(async () => {
         for (const att of emailAttachments) {
           try {
-            const ext = path.extname(att.filename).toLowerCase().slice(1);
-            if (!ALLOWED_TYPES.includes(ext)) { logger.warn(`IMAP: Skipping disallowed attachment .${ext} — ${att.filename}`); continue; }
+            const ext = resolveExt(att.filename, att.mime);
+            const allowedOrBin = [...ALLOWED_TYPES, 'bin'];
+            if (!allowedOrBin.includes(ext)) { logger.warn(`IMAP: Skipping disallowed attachment .${ext} — ${att.filename}`); continue; }
             if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
             const storedName = `${crypto.randomBytes(16).toString('hex')}.${ext}`;
             const filePath = path.join(uploadDir, storedName);
@@ -279,8 +300,9 @@ async function processEmail(client, uid) {
   // Save attachments — each in its own try/catch so one bad file never rolls back the comment
   for (const att of emailAttachments) {
     try {
-      const ext = path.extname(att.filename).toLowerCase().slice(1);
-      if (!ALLOWED_TYPES.includes(ext)) { logger.warn(`IMAP: Skipping disallowed attachment .${ext} — ${att.filename}`); continue; }
+      const ext = resolveExt(att.filename, att.mime);
+      const allowedOrBin = [...ALLOWED_TYPES, 'bin'];
+      if (!allowedOrBin.includes(ext)) { logger.warn(`IMAP: Skipping disallowed attachment .${ext} — ${att.filename}`); continue; }
       if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
       const storedName = `${crypto.randomBytes(16).toString('hex')}.${ext}`;
       const filePath = path.join(uploadDir, storedName);
