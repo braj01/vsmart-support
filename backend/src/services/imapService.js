@@ -316,56 +316,40 @@ async function getClient() {
   return imapClient;
 }
 
-async function checkUnseen(client) {
-  const lock = await client.getMailboxLock('INBOX');
+async function pollInbox() {
   try {
-    const uids = await client.search({ seen: false });
-    if (uids.length === 0) return;
-    logger.info(`IMAP: Processing ${uids.length} new email(s)`);
-    for (const uid of uids) {
-      try {
-        await processEmail(client, uid);
-        await client.messageFlagsAdd(uid, ['\\Seen']);
-      } catch (err) {
-        logger.error(`IMAP: Failed to process uid=${uid}: ${err.message}`);
+    const client = await getClient();
+    const lock = await client.getMailboxLock('INBOX');
+    try {
+      const uids = await client.search({ seen: false });
+      if (uids.length === 0) { logger.info('IMAP: No new emails'); return; }
+      logger.info(`IMAP: Processing ${uids.length} new email(s)`);
+      for (const uid of uids) {
+        try {
+          await processEmail(client, uid);
+          await client.messageFlagsAdd(uid, ['\\Seen']);
+        } catch (err) {
+          logger.error(`IMAP: Failed to process uid=${uid}: ${err.message}`);
+        }
       }
+    } finally {
+      lock.release();
     }
-  } finally {
-    lock.release();
+  } catch (err) {
+    logger.error(`IMAP poll error: ${err.message} — will retry next interval`);
+    // Reset client so next poll reconnects fresh
+    if (imapClient) { imapClient.logout().catch(() => {}); imapClient = null; }
   }
 }
 
-async function startImapPoller() {
+function startImapPoller() {
   if (!process.env.IMAP_HOST || !process.env.IMAP_USER || !process.env.IMAP_PASSWORD) {
     logger.info('IMAP: credentials not configured, poller disabled');
     return;
   }
-
-  const run = async () => {
-    try {
-      const client = await getClient();
-
-      // Process any emails that arrived before IDLE started
-      await checkUnseen(client);
-
-      // IDLE — server pushes EXISTS notification when new mail arrives
-      logger.info('IMAP: Entering IDLE mode (waiting for new mail)');
-      await client.idle();
-
-      // idle() resolves when the server signals new mail — check immediately
-      logger.info('IMAP: IDLE interrupted — checking for new emails');
-      await checkUnseen(client);
-
-      // Re-enter IDLE immediately
-      setImmediate(run);
-    } catch (err) {
-      logger.error(`IMAP error: ${err.message} — reconnecting in 30s`);
-      if (imapClient) { imapClient.logout().catch(() => {}); imapClient = null; }
-      setTimeout(run, 30_000);
-    }
-  };
-
-  run();
+  logger.info('IMAP: Poller started — checking every 60s');
+  pollInbox();
+  setInterval(pollInbox, 60_000);
 }
 
 module.exports = { startImapPoller };

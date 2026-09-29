@@ -4,11 +4,13 @@ const { sequelize } = require('./models');
 const logger = require('./utils/logger');
 
 process.on('unhandledRejection', (err) => {
-  logger.error(`Unhandled rejection: ${err.message}`);
+  logger.error(`Unhandled rejection: ${err?.message || err}`);
+  // Do NOT exit — log and continue
 });
 
 process.on('uncaughtException', (err) => {
-  logger.error(`Uncaught exception: ${err.message}`);
+  logger.error(`Uncaught exception: ${err?.message || err}`);
+  // Do NOT exit — log and continue
 });
 
 const { startImapPoller } = require('./services/imapService');
@@ -21,7 +23,7 @@ async function start() {
       await sequelize.authenticate();
       logger.info('Database connected');
       app.listen(PORT, () => logger.info(`Server running on port ${PORT}`));
-      startImapPoller().catch(err => logger.error(`IMAP poller error: ${err.message}`));
+      startImapPoller();
       return;
     } catch (err) {
       retries++;
