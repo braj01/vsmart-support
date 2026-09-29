@@ -52,7 +52,7 @@ export default function AdminLogin() {
             <input
               type="email"
               className="form-control"
-              placeholder="braj.singh@velocis.co.in"
+              placeholder="Email Address"
               value={form.email}
               onChange={e => { setForm(p => ({ ...p, email: e.target.value })); setError(''); }}
               autoFocus
