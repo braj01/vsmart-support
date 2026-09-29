@@ -207,6 +207,12 @@ export default function TicketDetail() {
                     <span className="fd-tag fd-tag-reply">Requester</span>
                     <span className="fd-message-time">{timeAgo(ticket.createdAt)}</span>
                   </div>
+                  {(ticket.requester_email || ccEmails.length > 0) && (
+                    <div className="fd-reply-to-bar">
+                      <span className="fd-reply-to-bar-to"><strong>To:</strong> {ticket.requester_email}</span>
+                      {ccEmails.length > 0 && <span className="fd-reply-to-bar-cc"><strong>CC:</strong> {ccEmails.join(', ')}</span>}
+                    </div>
+                  )}
                   <div className="fd-message-content" dangerouslySetInnerHTML={{ __html: ticket.description }} />
                   {ticket.attachments?.length > 0 && (
                     <div className="fd-msg-attachments">
@@ -223,13 +229,13 @@ export default function TicketDetail() {
               {/* Comments */}
               {ticket.comments?.map(c => (
                 <div key={c.id} className={`fd-message ${c.type === 'INTERNAL_NOTE' ? 'fd-message-note' : 'fd-message-reply'}`}>
-                  <div className={`fd-message-avatar ${c.type === 'INTERNAL_NOTE' ? 'fd-avatar-note' : 'fd-avatar-agent'}`}>
-                    {(c.author?.name || 'S')[0].toUpperCase()}
+                  <div className={`fd-message-avatar ${c.type === 'USER_REPLY' ? 'fd-avatar-requester' : c.type === 'INTERNAL_NOTE' ? 'fd-avatar-note' : 'fd-avatar-agent'}`}>
+                    {(c.type === 'USER_REPLY' ? (c.reply_to || 'U') : (c.author?.name || 'S'))[0].toUpperCase()}
                   </div>
                   <div className="fd-message-body">
                     <div className="fd-message-header">
-                      <strong>{c.author?.name || 'Support'}</strong>
-                      {c.type === 'INTERNAL_NOTE' ? <span className="fd-tag fd-tag-note">🔒 Internal Note</span> : <span className="fd-tag fd-tag-reply">↩ Reply</span>}
+                      <strong>{c.type === 'USER_REPLY' ? (c.reply_to || ticket.requester_email) : (c.author?.name || 'Support')}</strong>
+                      {c.type === 'USER_REPLY' ? <span className="fd-tag fd-tag-reply">👤 User Reply</span> : c.type === 'INTERNAL_NOTE' ? <span className="fd-tag fd-tag-note">🔒 Internal Note</span> : <span className="fd-tag fd-tag-reply">↩ Reply</span>}
                       <span className="fd-message-time">{timeAgo(c.createdAt)}</span>
                     </div>
                     {c.type === 'PUBLIC_REPLY' && c.reply_to && (
@@ -238,7 +244,21 @@ export default function TicketDetail() {
                         {c.reply_cc && <span className="fd-reply-to-bar-cc"><strong>CC:</strong> {c.reply_cc}</span>}
                       </div>
                     )}
+                    {c.type === 'USER_REPLY' && c.reply_cc && (
+                      <div className="fd-reply-to-bar">
+                        <span className="fd-reply-to-bar-to">{c.reply_cc}</span>
+                      </div>
+                    )}
                     <div className="fd-message-content" dangerouslySetInnerHTML={{ __html: c.comment }} />
+                    {c.commentAttachments?.length > 0 && (
+                      <div className="fd-msg-attachments">
+                        {c.commentAttachments.map(a => (
+                          <button key={a.id} type="button" className="fd-att-chip" onClick={() => previewAttachment(a.id, a.original_file_name)} title="Click to preview / download">
+                            📎 {a.original_file_name} <span className="fd-att-chip-size">({(a.file_size/1024).toFixed(1)} KB)</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}

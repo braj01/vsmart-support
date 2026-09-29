@@ -18,6 +18,8 @@ Ticket.hasMany(TicketStatusHistory, { foreignKey: 'ticket_id', as: 'statusHistor
 Ticket.hasMany(TicketAuditLog, { foreignKey: 'ticket_id', as: 'auditLogs' });
 
 TicketComment.belongsTo(User, { foreignKey: 'user_id', as: 'author' });
+TicketComment.hasMany(TicketAttachment, { foreignKey: 'comment_id', as: 'commentAttachments' });
+TicketAttachment.belongsTo(TicketComment, { foreignKey: 'comment_id', as: 'comment' });
 TicketAttachment.belongsTo(User, { foreignKey: 'uploaded_by', as: 'uploader' });
 TicketStatusHistory.belongsTo(User, { foreignKey: 'changed_by', as: 'changedBy' });
 TicketAuditLog.belongsTo(User, { foreignKey: 'user_id', as: 'actor' });
