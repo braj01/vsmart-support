@@ -15,14 +15,19 @@ const { startImapPoller } = require('./services/imapService');
 const PORT = process.env.PORT || 5000;
 
 async function start() {
-  try {
-    await sequelize.authenticate();
-    logger.info('Database connected');
-    app.listen(PORT, () => logger.info(`Server running on port ${PORT}`));
-    startImapPoller();
-  } catch (err) {
-    logger.error(`Startup failed: ${err.message}`);
-    process.exit(1);
+  let retries = 0;
+  while (true) {
+    try {
+      await sequelize.authenticate();
+      logger.info('Database connected');
+      app.listen(PORT, () => logger.info(`Server running on port ${PORT}`));
+      startImapPoller().catch(err => logger.error(`IMAP poller error: ${err.message}`));
+      return;
+    } catch (err) {
+      retries++;
+      logger.error(`Startup failed (attempt ${retries}): ${err.message} — retrying in 10s`);
+      await new Promise(r => setTimeout(r, 10_000));
+    }
   }
 }
 
