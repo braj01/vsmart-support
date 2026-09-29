@@ -31,8 +31,13 @@ function decodeQuotedPrintable(str = '') {
 
 // Split a MIME block into its parts using the boundary declared in its Content-Type header
 function splitMimeParts(block) {
+  // Find the header section — handle blocks that start with \n (after boundary delimiter)
+  const headerStart = block.search(/[^\r\n]/);
+  const trimmed = headerStart > 0 ? block.slice(headerStart) : block;
+  const headerEndIdx = trimmed.indexOf('\n\n');
   // Unfold header lines (CRLF/LF + whitespace = continuation) before matching boundary
-  const unfolded = block.slice(0, block.indexOf('\n\n') + 1).replace(/\n[ \t]+/g, ' ');
+  const headerSection = headerEndIdx !== -1 ? trimmed.slice(0, headerEndIdx) : trimmed;
+  const unfolded = headerSection.replace(/\n[ \t]+/g, ' ');
   const boundaryMatch = unfolded.match(/boundary="([^"]+)"|boundary=([^\s;\r\n]+)/i);
   if (!boundaryMatch) return null;
   const boundary = boundaryMatch[1] || boundaryMatch[2];
@@ -50,7 +55,7 @@ function findBodyParts(block) {
   if (headerEnd === -1) return { html: null, plain: null, attachments: [] };
   const body = block.slice(headerEnd + 2);
 
-  // Recurse into multipart/*
+  // Recurse into multipart/* FIRST — before checking disposition
   if (/content-type:\s*multipart\//i.test(block)) {
     const parts = splitMimeParts(block);
     if (parts) {
@@ -65,15 +70,20 @@ function findBodyParts(block) {
     }
   }
 
-  // Attachment part — has Content-Disposition: attachment OR inline with a filename
-  const dispositionMatch = block.match(/content-disposition:\s*(attachment|inline)[^\n]*/i);
-  const filenameMatch = block.match(/(?:content-disposition|content-type)[^\n]*(?:filename|name)="?([^"\s;\r\n]+)"?/i);
+  // Attachment part — unfold headers first so filename on continuation line is found
+  const unfoldedBlock = block.slice(0, headerEnd).replace(/\n[ \t]+/g, ' ') + block.slice(headerEnd);
+  const dispositionMatch = unfoldedBlock.match(/content-disposition:\s*(attachment|inline)[^\n]*/i);
+  // Support both filename="x" and RFC 2231 filename*=charset''encoded-name
+  const filenameMatch =
+    unfoldedBlock.match(/(?:content-disposition|content-type)[^\n]*(?:filename\*=[^']*''([^\s;\r\n]+))/i) ||
+    unfoldedBlock.match(/(?:content-disposition|content-type)[^\n]*(?:filename|name)="?([^"\s;\r\n]+)"?/i);
   if (dispositionMatch && filenameMatch) {
-    const filename = filenameMatch[1];
-    const mimeMatch = block.match(/content-type:\s*([^;\s\r\n]+)/i);
+    let filename = filenameMatch[1];
+    try { filename = decodeURIComponent(filename); } catch {}
+    const mimeMatch = unfoldedBlock.match(/content-type:\s*([^;\s\r\n]+)/i);
     const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
-    const isBase64 = /base64/i.test(block);
-    const isQP = /quoted-printable/i.test(block);
+    const isBase64 = /base64/i.test(unfoldedBlock.slice(0, headerEnd));
+    const isQP = /quoted-printable/i.test(unfoldedBlock.slice(0, headerEnd));
     let data;
     if (isBase64) data = decodeBase64Part(body);
     else if (isQP) data = Buffer.from(decodeQuotedPrintable(body), 'binary');
@@ -184,9 +194,14 @@ async function processEmail(client, uid) {
     if (text) htmlContent = `<p>${text.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p>`;
   }
 
+  // Allow attachment-only emails — use placeholder so comment is always saved
   if (!htmlContent) {
-    logger.info(`IMAP: Empty body after extraction, skipping uid=${uid}`);
-    return false;
+    if (emailAttachments.length > 0) {
+      htmlContent = '<p><em>(Attachment only — no message body)</em></p>';
+    } else {
+      logger.info(`IMAP: Empty body after extraction, skipping uid=${uid}`);
+      return false;
+    }
   }
 
   const clean = sanitizeHtml(htmlContent);
