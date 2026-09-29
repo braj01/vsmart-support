@@ -11,6 +11,7 @@ process.on('uncaughtException', (err) => {
   logger.error(`Uncaught exception: ${err.message}`);
 });
 
+const { startImapPoller } = require('./services/imapService');
 const PORT = process.env.PORT || 5000;
 
 async function start() {
@@ -18,6 +19,7 @@ async function start() {
     await sequelize.authenticate();
     logger.info('Database connected');
     app.listen(PORT, () => logger.info(`Server running on port ${PORT}`));
+    startImapPoller();
   } catch (err) {
     logger.error(`Startup failed: ${err.message}`);
     process.exit(1);

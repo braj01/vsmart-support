@@ -21,15 +21,25 @@ function getCcList(ticket) {
   return ticket.cc_emails.split(',').map(e => e.trim()).filter(Boolean);
 }
 
-async function sendEmail({ to, cc = [], subject, html }) {
+async function sendEmail({ to, cc = [], subject, html, replyTo, ticketToken }) {
   try {
+    const hiddenRef = ticketToken
+      ? `<div style="display:none;max-height:0;overflow:hidden;font-size:0;color:transparent">ref:${ticketToken.slice(0, 16)}</div>`
+      : '';
     const mailOptions = {
       from: `"${process.env.SMTP_FROM_NAME}" <${process.env.SMTP_FROM_EMAIL}>`,
       to,
       subject,
-      html,
+      html: hiddenRef + html,
     };
     if (cc.length > 0) mailOptions.cc = cc.join(', ');
+    mailOptions.replyTo = replyTo || process.env.SMTP_USER;
+    // Set Message-ID containing ticket token — preserved in In-Reply-To/References on every reply
+    // Works for requester AND CC recipients regardless of email client
+    if (ticketToken) {
+      const domain = (process.env.SMTP_FROM_EMAIL || 'support').split('@')[1] || 'vsmart.support';
+      mailOptions.messageId = `<ticket-${ticketToken.slice(0, 16)}@${domain}>`;
+    }
     await getTransporter().sendMail(mailOptions);
     logger.info(`Email sent to ${to}${cc.length ? ` CC: ${cc.join(', ')}` : ''} | ${subject}`);
   } catch (err) {
@@ -50,7 +60,7 @@ function emailWrapper(title, accentColor, bodyHtml) {
       ${bodyHtml}
     </div>
     <div style="padding:14px 28px;background:#f3f4f6;border-top:1px solid #e5e7eb;font-size:12px;color:#9ca3af;text-align:center">
-      This is an automated notification from vSmart Support. Please do not reply to this email.
+      You can reply directly to this email and your message will be added to the ticket thread.
     </div>
   </div>`;
 }
@@ -73,7 +83,7 @@ async function sendTicketCreatedEmail(ticket) {
     ${ticketInfoTable(ticket)}
     <p style="font-size:13px;color:#6b7280;margin-top:8px">You can track your ticket status using the ticket number above.</p>
   `);
-  await sendEmail({ to: ticket.requester_email, cc, subject: `Ticket Created - ${ticket.ticket_number}`, html });
+  await sendEmail({ to: ticket.requester_email, cc, subject: `Ticket Created - ${ticket.ticket_number}`, html, ticketToken: ticket.public_token });
 
   if (process.env.TICKET_ADMIN_EMAIL) {
     const adminHtml = emailWrapper('🎫 New Ticket Submitted', '#1e293b', `
@@ -100,7 +110,7 @@ async function sendStatusChangedEmail(ticket, oldStatus, newStatus, changedByNam
       </p>
     </div>
   `);
-  await sendEmail({ to: ticket.requester_email, cc, subject: `[${ticket.ticket_number}] Status Updated: ${newStatus.replace('_', ' ')}`, html });
+  await sendEmail({ to: ticket.requester_email, cc, subject: `[${ticket.ticket_number}] Status Updated: ${newStatus.replace('_', ' ')}`, html, ticketToken: ticket.public_token });
 }
 
 // ── Priority Changed ────────────────────────────────────────────
@@ -116,7 +126,7 @@ async function sendPriorityChangedEmail(ticket, oldPriority, newPriority, change
       </p>
     </div>
   `);
-  await sendEmail({ to: ticket.requester_email, cc, subject: `[${ticket.ticket_number}] Priority Updated: ${newPriority}`, html });
+  await sendEmail({ to: ticket.requester_email, cc, subject: `[${ticket.ticket_number}] Priority Updated: ${newPriority}`, html, ticketToken: ticket.public_token });
 }
 
 // ── Ticket Assigned ─────────────────────────────────────────────
@@ -131,7 +141,7 @@ async function sendTicketAssignedEmail(ticket, agentName) {
       </p>
     </div>
   `);
-  await sendEmail({ to: ticket.requester_email, cc, subject: `[${ticket.ticket_number}] Ticket Assigned`, html });
+  await sendEmail({ to: ticket.requester_email, cc, subject: `[${ticket.ticket_number}] Ticket Assigned`, html, ticketToken: ticket.public_token });
 }
 
 // ── New Reply / Comment ─────────────────────────────────────────
@@ -145,7 +155,8 @@ async function sendCommentNotificationEmail(ticket, comment, authorName) {
       <div style="font-size:14px;color:#374151;line-height:1.6">${comment.comment}</div>
     </div>
   `);
-  await sendEmail({ to: ticket.requester_email, cc, subject: `Re: [${ticket.ticket_number}] ${ticket.subject}`, html });
+  // Embed public_token in subject so IMAP poller can route the reply back to this ticket
+  await sendEmail({ to: ticket.requester_email, cc, subject: `Re: ${ticket.subject}`, html, ticketToken: ticket.public_token });
 }
 
 module.exports = {

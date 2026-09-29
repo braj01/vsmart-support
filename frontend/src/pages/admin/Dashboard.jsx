@@ -39,7 +39,7 @@ export default function Dashboard() {
     <div className="fd-empty">
       <div className="fd-empty-icon">⚠️</div>
       <h3>Failed to load dashboard</h3>
-      <p>Make sure the backend is running on port 3001</p>
+      <p>Make sure the backend is running on port 5009</p>
       <button className="fd-btn fd-btn-primary" onClick={() => window.location.reload()}>Retry</button>
     </div>
   );

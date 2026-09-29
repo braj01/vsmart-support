@@ -184,7 +184,7 @@
 .al-role { font-size: 11px; color: #6b7280; line-height: 1.3; }
 
 /* Content */
-.al-content { flex: 1; overflow-y: auto; padding: 24px 28px; background: #f0f2f5; }
+.al-content { flex: 1; overflow-y: auto; padding: 0 28px 24px; background: #f0f2f5; }
 
 @media (max-width: 768px) {
   .al-sidebar { position: fixed; height: 100vh; z-index: 200; }

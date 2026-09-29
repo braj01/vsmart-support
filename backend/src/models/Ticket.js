@@ -13,7 +13,7 @@ const Ticket = sequelize.define('Ticket', {
     defaultValue: 'OPEN',
   },
   description: { type: DataTypes.TEXT('long'), allowNull: false },
-  source: { type: DataTypes.ENUM('PUBLIC_FORM', 'ADMIN', 'API'), defaultValue: 'PUBLIC_FORM' },
+  source: { type: DataTypes.ENUM('PUBLIC_FORM', 'ADMIN', 'API', 'EMAIL'), defaultValue: 'PUBLIC_FORM' },
   assigned_to: { type: DataTypes.INTEGER, allowNull: true },
   public_token: { type: DataTypes.STRING(64), allowNull: false, unique: true },
   resolved_at: { type: DataTypes.DATE, allowNull: true },

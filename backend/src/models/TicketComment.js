@@ -6,7 +6,7 @@ const TicketComment = sequelize.define('TicketComment', {
   ticket_id: { type: DataTypes.INTEGER, allowNull: false },
   user_id: { type: DataTypes.INTEGER, allowNull: true },
   comment: { type: DataTypes.TEXT('long'), allowNull: false },
-  type: { type: DataTypes.ENUM('PUBLIC_REPLY', 'INTERNAL_NOTE'), defaultValue: 'PUBLIC_REPLY' },
+  type: { type: DataTypes.ENUM('PUBLIC_REPLY', 'INTERNAL_NOTE', 'USER_REPLY'), defaultValue: 'PUBLIC_REPLY' },
   reply_to: { type: DataTypes.STRING, allowNull: true },
   reply_cc: { type: DataTypes.TEXT, allowNull: true },
 }, { tableName: 'ticket_comments' });

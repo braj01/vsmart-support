@@ -40,8 +40,11 @@ async function getTicket(req, res) {
   const ticket = await Ticket.findByPk(req.params.id, {
     include: [
       { model: User, as: 'assignee', attributes: ['id', 'name', 'email'] },
-      { model: TicketAttachment, as: 'attachments', attributes: { exclude: ['file_path'] } },
-      { model: TicketComment, as: 'comments', include: [{ model: User, as: 'author', attributes: ['id', 'name', 'email'] }], order: [['created_at', 'ASC']] },
+      { model: TicketAttachment, as: 'attachments', where: { comment_id: null }, required: false, attributes: { exclude: ['file_path'] } },
+      { model: TicketComment, as: 'comments', where: { type: ['PUBLIC_REPLY', 'INTERNAL_NOTE', 'USER_REPLY'] }, required: false, include: [
+        { model: User, as: 'author', attributes: ['id', 'name', 'email'] },
+        { model: TicketAttachment, as: 'commentAttachments', attributes: { exclude: ['file_path'] } },
+      ], order: [['created_at', 'ASC']] },
       { model: TicketStatusHistory, as: 'statusHistory', include: [{ model: User, as: 'changedBy', attributes: ['id', 'name'] }], order: [['created_at', 'ASC']] },
     ],
   });

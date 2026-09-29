@@ -91,8 +91,11 @@ async function getTicketByToken(req, res) {
     const ticket = await Ticket.findOne({
       where: { public_token: req.params.token },
       include: [
-        { model: TicketAttachment, as: 'attachments', attributes: ['id', 'original_file_name', 'file_size', 'mime_type', 'created_at'] },
-        { model: require('../models').TicketComment, as: 'comments', where: { type: 'PUBLIC_REPLY' }, required: false, include: [{ model: User, as: 'author', attributes: ['name'] }] },
+        { model: TicketAttachment, as: 'attachments', where: { comment_id: null }, required: false, attributes: ['id', 'original_file_name', 'file_size', 'mime_type', 'created_at'] },
+        { model: require('../models').TicketComment, as: 'comments', where: { type: ['PUBLIC_REPLY', 'USER_REPLY'] }, required: false, attributes: ['id', 'comment', 'type', 'reply_to', 'reply_cc', 'createdAt'], include: [
+          { model: User, as: 'author', attributes: ['name'] },
+          { model: require('../models').TicketAttachment, as: 'commentAttachments', attributes: ['id', 'original_file_name', 'file_size', 'mime_type'] },
+        ], order: [['created_at', 'ASC']] },
       ],
     });
     if (!ticket) return errorResponse(res, 'Ticket not found', 404);
@@ -103,4 +106,44 @@ async function getTicketByToken(req, res) {
   }
 }
 
-module.exports = { submitTicket, getTicketByToken };
+async function userReply(req, res) {
+  const { comment } = req.body;
+  if (!comment?.trim()) return errorResponse(res, 'Reply cannot be empty', 400);
+  try {
+    const ticket = await Ticket.findOne({ where: { public_token: req.params.token } });
+    if (!ticket) return errorResponse(res, 'Ticket not found', 404);
+    if (ticket.status === 'CLOSED') return errorResponse(res, 'Cannot reply to a closed ticket', 400);
+
+    const clean = sanitizeHtml(comment);
+    const newComment = await require('../models').TicketComment.create({
+      ticket_id: ticket.id,
+      user_id: null,
+      comment: clean,
+      type: 'USER_REPLY',
+      reply_to: ticket.requester_email,  // always set so frontend always has a display name
+      reply_cc: null,
+    });
+
+    await TicketAuditLog.create({ ticket_id: ticket.id, action: 'USER_REPLY_ADDED' });
+
+    // Notify admin
+    const { sendEmail } = require('../services/emailService');
+    if (process.env.TICKET_ADMIN_EMAIL) {
+      sendEmail({
+        to: process.env.TICKET_ADMIN_EMAIL,
+        subject: `[User Reply] Ticket #${ticket.ticket_number} - ${ticket.subject}`,
+        html: `<p>The user has replied to ticket <strong>#${ticket.ticket_number}</strong>.</p>
+               <p><strong>Subject:</strong> ${ticket.subject}</p>
+               <p><strong>Reply:</strong></p>
+               <div style="background:#f9fafb;padding:12px;border-left:4px solid #2563eb">${clean}</div>`,
+      }).catch(err => logger.error(`User reply email error: ${err.message}`));
+    }
+
+    return successResponse(res, newComment, 'Reply submitted', 201);
+  } catch (err) {
+    logger.error(`userReply failed: ${err.message}`);
+    return errorResponse(res, 'Failed to submit reply', 500);
+  }
+}
+
+module.exports = { submitTicket, getTicketByToken, userReply };
