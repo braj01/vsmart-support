@@ -289,55 +289,72 @@ async function processEmail(client, uid) {
   logger.info(`IMAP: User reply added to ticket ${ticket.ticket_number} from ${fromEmail}`);
 }
 
-async function pollInbox() {
-  if (!process.env.IMAP_HOST || !process.env.IMAP_USER || !process.env.IMAP_PASSWORD) {
-    logger.warn('IMAP: credentials not configured, skipping poll');
-    return;
-  }
+let imapClient = null;
 
-  const client = new ImapFlow({
+async function getClient() {
+  if (imapClient && imapClient.usable) return imapClient;
+  imapClient = new ImapFlow({
     host: process.env.IMAP_HOST,
     port: parseInt(process.env.IMAP_PORT) || 993,
     secure: process.env.IMAP_TLS !== 'false',
     auth: { user: process.env.IMAP_USER, pass: process.env.IMAP_PASSWORD },
     logger: { debug() {}, info() {}, warn() {}, error() {} },
   });
+  await imapClient.connect();
+  logger.info('IMAP: Connected');
+  return imapClient;
+}
 
+async function checkUnseen(client) {
+  const lock = await client.getMailboxLock('INBOX');
   try {
-    await client.connect();
-    const lock = await client.getMailboxLock('INBOX');
-    try {
-      const uids = await client.search({ seen: false });
-      if (uids.length === 0) { logger.info('IMAP: No new emails'); return; }
-      logger.info(`IMAP: Processing ${uids.length} new email(s)`);
-      for (const uid of uids) {
-        try {
-          await processEmail(client, uid);
-          await client.messageFlagsAdd(uid, ['\\Seen']);
-        } catch (err) {
-          logger.error(`IMAP: Failed to process uid=${uid}: ${err.message}`);
-        }
+    const uids = await client.search({ seen: false });
+    if (uids.length === 0) return;
+    logger.info(`IMAP: Processing ${uids.length} new email(s)`);
+    for (const uid of uids) {
+      try {
+        await processEmail(client, uid);
+        await client.messageFlagsAdd(uid, ['\\Seen']);
+      } catch (err) {
+        logger.error(`IMAP: Failed to process uid=${uid}: ${err.message}`);
       }
-    } finally {
-      lock.release();
     }
-  } catch (err) {
-    logger.error(`IMAP poll error: ${err.message}`);
   } finally {
-    await client.logout().catch(() => {});
+    lock.release();
   }
 }
 
-const POLL_INTERVAL_MS = 60 * 1000;
-
-function startImapPoller() {
-  if (!process.env.IMAP_HOST) {
-    logger.info('IMAP: IMAP_HOST not set, poller disabled');
+async function startImapPoller() {
+  if (!process.env.IMAP_HOST || !process.env.IMAP_USER || !process.env.IMAP_PASSWORD) {
+    logger.info('IMAP: credentials not configured, poller disabled');
     return;
   }
-  logger.info(`IMAP: Poller started — checking every ${POLL_INTERVAL_MS / 1000}s`);
-  pollInbox();
-  setInterval(pollInbox, POLL_INTERVAL_MS);
+
+  const run = async () => {
+    try {
+      const client = await getClient();
+
+      // Process any emails that arrived before IDLE started
+      await checkUnseen(client);
+
+      // IDLE — server pushes EXISTS notification when new mail arrives
+      logger.info('IMAP: Entering IDLE mode (waiting for new mail)');
+      await client.idle();
+
+      // idle() resolves when the server signals new mail — check immediately
+      logger.info('IMAP: IDLE interrupted — checking for new emails');
+      await checkUnseen(client);
+
+      // Re-enter IDLE immediately
+      setImmediate(run);
+    } catch (err) {
+      logger.error(`IMAP error: ${err.message} — reconnecting in 30s`);
+      if (imapClient) { imapClient.logout().catch(() => {}); imapClient = null; }
+      setTimeout(run, 30_000);
+    }
+  };
+
+  run();
 }
 
 module.exports = { startImapPoller };
