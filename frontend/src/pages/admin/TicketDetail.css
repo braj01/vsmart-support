@@ -104,6 +104,11 @@
 .fd-att-chip { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 20px; font-size: 12px; color: #0369a1; cursor: pointer; transition: background 0.15s; }
 .fd-att-chip:hover { background: #e0f2fe; }
 .fd-att-chip-size { color: #9ca3af; }
+.fd-att-chip-remove { background: none; border: none; cursor: pointer; color: #9ca3af; font-size: 12px; padding: 0 0 0 4px; line-height: 1; }
+.fd-att-chip-remove:hover { color: #dc2626; }
+
+/* Reply attachments row */
+.fd-reply-attachments { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 12px; background: #f9fafb; border-top: 1px solid #e5e7eb; }
 
 /* Attachment preview modal */
 .fd-att-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 20px; }

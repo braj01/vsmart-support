@@ -21,7 +21,7 @@ function getCcList(ticket) {
   return ticket.cc_emails.split(',').map(e => e.trim()).filter(Boolean);
 }
 
-async function sendEmail({ to, cc = [], subject, html, replyTo, ticketToken }) {
+async function sendEmail({ to, cc = [], subject, html, replyTo, ticketToken, attachments = [] }) {
   try {
     const hiddenRef = ticketToken
       ? `<div style="display:none;max-height:0;overflow:hidden;font-size:0;color:transparent">ref:${ticketToken.slice(0, 16)}</div>`
@@ -34,12 +34,11 @@ async function sendEmail({ to, cc = [], subject, html, replyTo, ticketToken }) {
     };
     if (cc.length > 0) mailOptions.cc = cc.join(', ');
     mailOptions.replyTo = replyTo || process.env.SMTP_USER;
-    // Set Message-ID containing ticket token — preserved in In-Reply-To/References on every reply
-    // Works for requester AND CC recipients regardless of email client
     if (ticketToken) {
       const domain = (process.env.SMTP_FROM_EMAIL || 'support').split('@')[1] || 'vsmart.support';
       mailOptions.messageId = `<ticket-${ticketToken.slice(0, 16)}@${domain}>`;
     }
+    if (attachments.length) mailOptions.attachments = attachments;
     await getTransporter().sendMail(mailOptions);
     logger.info(`Email sent to ${to}${cc.length ? ` CC: ${cc.join(', ')}` : ''} | ${subject}`);
   } catch (err) {
@@ -145,7 +144,7 @@ async function sendTicketAssignedEmail(ticket, agentName) {
 }
 
 // ── New Reply / Comment ─────────────────────────────────────────
-async function sendCommentNotificationEmail(ticket, comment, authorName) {
+async function sendCommentNotificationEmail(ticket, comment, authorName, files = []) {
   const cc = getCcList(ticket);
   const html = emailWrapper('💬 New Reply on Your Ticket', '#2563eb', `
     <p style="color:#374151">A new reply has been added to your support ticket.</p>
@@ -155,8 +154,9 @@ async function sendCommentNotificationEmail(ticket, comment, authorName) {
       <div style="font-size:14px;color:#374151;line-height:1.6">${comment.comment}</div>
     </div>
   `);
+  const attachments = files.map(f => ({ filename: f.originalname, path: f.path, contentType: f.mimetype }));
   // Embed public_token in subject so IMAP poller can route the reply back to this ticket
-  await sendEmail({ to: ticket.requester_email, cc, subject: `Re: ${ticket.subject}`, html, ticketToken: ticket.public_token });
+  await sendEmail({ to: ticket.requester_email, cc, subject: `Re: ${ticket.subject}`, html, ticketToken: ticket.public_token, attachments });
 }
 
 module.exports = {

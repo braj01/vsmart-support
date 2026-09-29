@@ -74,16 +74,15 @@ async function changeStatus(req, res) {
   const updates = { status };
   if (status === 'CLOSED') updates.closed_at = new Date();
 
-  const t = await sequelize.transaction();
   try {
-    await ticket.update(updates, { transaction: t });
-    await TicketStatusHistory.create({ ticket_id: ticket.id, old_status: oldStatus, new_status: status, changed_by: req.user.id, reason }, { transaction: t });
-    await TicketAuditLog.create({ ticket_id: ticket.id, user_id: req.user.id, action: 'STATUS_CHANGED', old_value: oldStatus, new_value: status }, { transaction: t });
-    await t.commit();
+    await sequelize.transaction(async (t) => {
+      await ticket.update(updates, { transaction: t });
+      await TicketStatusHistory.create({ ticket_id: ticket.id, old_status: oldStatus, new_status: status, changed_by: req.user.id, reason }, { transaction: t });
+      await TicketAuditLog.create({ ticket_id: ticket.id, user_id: req.user.id, action: 'STATUS_CHANGED', old_value: oldStatus, new_value: status }, { transaction: t });
+    });
     sendStatusChangedEmail(ticket, oldStatus, status, req.user.name).catch(err => logger.error(err.message));
     return successResponse(res, ticket, 'Status updated');
   } catch (err) {
-    await t.rollback();
     logger.error(`changeStatus error: ${err.message}`);
     return errorResponse(res, 'Failed to update status', 500);
   }
@@ -116,36 +115,42 @@ async function assignTicket(req, res) {
 }
 
 async function addComment(req, res) {
-  const { comment, type = 'PUBLIC_REPLY', reply_to, reply_cc, close_after = false } = req.body;
+  const { comment, type = 'PUBLIC_REPLY', reply_to, reply_cc } = req.body;
+  const close_after = req.body.close_after === true || req.body.close_after === 'true';
   const ticket = await Ticket.findByPk(req.params.id);
   if (!ticket) return errorResponse(res, 'Ticket not found', 404);
   const clean = sanitizeHtml(comment);
+  const files = req.files || [];
 
-  const t = await sequelize.transaction();
   try {
-    const newComment = await TicketComment.create({ ticket_id: ticket.id, user_id: req.user.id, comment: clean, type, reply_to: reply_to || ticket.requester_email, reply_cc: reply_cc || ticket.cc_emails || null }, { transaction: t });
-    await TicketAuditLog.create({ ticket_id: ticket.id, user_id: req.user.id, action: type === 'INTERNAL_NOTE' ? 'INTERNAL_NOTE_ADDED' : 'REPLY_ADDED' }, { transaction: t });
-
-    if (type === 'PUBLIC_REPLY' && ticket.status === 'OPEN') {
-      const newStatus = close_after ? 'CLOSED' : 'ACKNOWLEDGED';
-      await ticket.update({ status: newStatus, ...(close_after ? { closed_at: new Date() } : {}) }, { transaction: t });
-      await TicketStatusHistory.create({ ticket_id: ticket.id, old_status: 'OPEN', new_status: newStatus, changed_by: req.user.id }, { transaction: t });
-    } else if (type === 'PUBLIC_REPLY' && close_after) {
-      await ticket.update({ status: 'CLOSED', closed_at: new Date() }, { transaction: t });
-      await TicketStatusHistory.create({ ticket_id: ticket.id, old_status: ticket.status, new_status: 'CLOSED', changed_by: req.user.id }, { transaction: t });
-    }
-
-    await t.commit();
-
+    const newComment = await sequelize.transaction(async (t) => {
+      const c = await TicketComment.create({ ticket_id: ticket.id, user_id: req.user.id, comment: clean, type, reply_to: reply_to || ticket.requester_email, reply_cc: reply_cc || ticket.cc_emails || null }, { transaction: t });
+      if (files.length) {
+        await TicketAttachment.bulkCreate(files.map(f => ({
+          ticket_id: ticket.id, comment_id: c.id, original_file_name: f.originalname,
+          stored_file_name: f.filename, file_path: f.path, mime_type: f.mimetype,
+          file_size: f.size, uploaded_by: req.user.id,
+        })), { transaction: t });
+      }
+      await TicketAuditLog.create({ ticket_id: ticket.id, user_id: req.user.id, action: type === 'INTERNAL_NOTE' ? 'INTERNAL_NOTE_ADDED' : 'REPLY_ADDED' }, { transaction: t });
+      if (type === 'PUBLIC_REPLY' && ticket.status === 'OPEN') {
+        const newStatus = close_after ? 'CLOSED' : 'ACKNOWLEDGED';
+        await ticket.update({ status: newStatus, ...(close_after ? { closed_at: new Date() } : {}) }, { transaction: t });
+        await TicketStatusHistory.create({ ticket_id: ticket.id, old_status: 'OPEN', new_status: newStatus, changed_by: req.user.id }, { transaction: t });
+      } else if (type === 'PUBLIC_REPLY' && close_after) {
+        await ticket.update({ status: 'CLOSED', closed_at: new Date() }, { transaction: t });
+        await TicketStatusHistory.create({ ticket_id: ticket.id, old_status: ticket.status, new_status: 'CLOSED', changed_by: req.user.id }, { transaction: t });
+      }
+      return c;
+    });
     if (type === 'PUBLIC_REPLY') {
       const emailTarget = { ...ticket.dataValues };
       if (reply_to) emailTarget.requester_email = reply_to;
       if (reply_cc !== undefined) emailTarget.cc_emails = reply_cc;
-      sendCommentNotificationEmail(emailTarget, newComment, req.user.name).catch(err => logger.error(err.message));
+      sendCommentNotificationEmail(emailTarget, newComment, req.user.name, files).catch(err => logger.error(err.message));
     }
     return successResponse(res, newComment, 'Comment added', 201);
   } catch (err) {
-    await t.rollback();
     logger.error(`addComment error: ${err.message}`);
     return errorResponse(res, 'Failed to add comment', 500);
   }

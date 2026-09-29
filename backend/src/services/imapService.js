@@ -197,8 +197,7 @@ async function processEmail(client, uid) {
 
   if (!ref) {
     // No ticket ref — create a new ticket from this email
-    const t = await sequelize.transaction();
-    try {
+    await sequelize.transaction(async (t) => {
       const ticket_number = await generateTicketNumber(t);
       const public_token = generatePublicToken();
       const ccEmails = (msg.envelope?.cc || []).map(a => a.address).filter(Boolean);
@@ -216,30 +215,27 @@ async function processEmail(client, uid) {
 
       await TicketStatusHistory.create({ ticket_id: ticket.id, old_status: null, new_status: 'OPEN' }, { transaction: t });
       await TicketAuditLog.create({ ticket_id: ticket.id, action: 'TICKET_CREATED', new_value: ticket_number, metadata: { source: 'EMAIL', from: fromEmail } }, { transaction: t });
-      await t.commit();
 
-      // Save attachments linked to ticket (no comment_id — they're the original submission)
-      for (const att of emailAttachments) {
-        try {
-          const ext = path.extname(att.filename).toLowerCase().slice(1);
-          if (!ALLOWED_TYPES.includes(ext)) { logger.warn(`IMAP: Skipping disallowed attachment .${ext} — ${att.filename}`); continue; }
-          if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-          const storedName = `${crypto.randomBytes(16).toString('hex')}.${ext}`;
-          const filePath = path.join(uploadDir, storedName);
-          fs.writeFileSync(filePath, att.data);
-          await TicketAttachment.create({ ticket_id: ticket.id, comment_id: null, original_file_name: att.filename, stored_file_name: storedName, file_path: filePath, mime_type: att.mime, file_size: att.data.length, uploaded_by: null });
-          logger.info(`IMAP: Saved attachment ${att.filename} for new ticket ${ticket_number}`);
-        } catch (attErr) {
-          logger.error(`IMAP: Failed to save attachment ${att.filename}: ${attErr.message}`);
+      // Run post-commit work after transaction closes
+      t.afterCommit(async () => {
+        for (const att of emailAttachments) {
+          try {
+            const ext = path.extname(att.filename).toLowerCase().slice(1);
+            if (!ALLOWED_TYPES.includes(ext)) { logger.warn(`IMAP: Skipping disallowed attachment .${ext} — ${att.filename}`); continue; }
+            if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+            const storedName = `${crypto.randomBytes(16).toString('hex')}.${ext}`;
+            const filePath = path.join(uploadDir, storedName);
+            fs.writeFileSync(filePath, att.data);
+            await TicketAttachment.create({ ticket_id: ticket.id, comment_id: null, original_file_name: att.filename, stored_file_name: storedName, file_path: filePath, mime_type: att.mime, file_size: att.data.length, uploaded_by: null });
+            logger.info(`IMAP: Saved attachment ${att.filename} for new ticket ${ticket_number}`);
+          } catch (attErr) {
+            logger.error(`IMAP: Failed to save attachment ${att.filename}: ${attErr.message}`);
+          }
         }
-      }
-
-      sendTicketCreatedEmail(ticket).catch(err => logger.error(`IMAP ticket created email error: ${err.message}`));
-      logger.info(`IMAP: New ticket ${ticket_number} created from email by ${fromEmail}`);
-    } catch (err) {
-      await t.rollback();
-      throw err;
-    }
+        sendTicketCreatedEmail(ticket).catch(err => logger.error(`IMAP ticket created email error: ${err.message}`));
+        logger.info(`IMAP: New ticket ${ticket_number} created from email by ${fromEmail}`);
+      });
+    });
     return;
   }
 

@@ -42,44 +42,41 @@ async function submitTicket(req, res) {
     return errorResponse(res, 'Too many tickets submitted from this email. Please try again later.', 429);
   }
 
-  const t = await sequelize.transaction();
   try {
-    const ticket_number = await generateTicketNumber(t);
-    const public_token = generatePublicToken();
-    const cleanDescription = sanitizeHtml(description);
+    const { ticket, ticket_number, public_token } = await sequelize.transaction(async (t) => {
+      const ticket_number = await generateTicketNumber(t);
+      const public_token = generatePublicToken();
+      const cleanDescription = sanitizeHtml(description);
 
-    const ticket = await Ticket.create({
-      ticket_number, subject, requester_email,
-      priority: priority.toUpperCase(),
-      description: cleanDescription,
-      source: 'PUBLIC_FORM',
-      public_token,
-      cc_emails: cc_emails || null,
-    }, { transaction: t });
+      const ticket = await Ticket.create({
+        ticket_number, subject, requester_email,
+        priority: priority.toUpperCase(),
+        description: cleanDescription,
+        source: 'PUBLIC_FORM',
+        public_token,
+        cc_emails: cc_emails || null,
+      }, { transaction: t });
 
-    if (files.length > 0) {
-      await TicketAttachment.bulkCreate(files.map(f => ({
-        ticket_id: ticket.id,
-        original_file_name: f.originalname,
-        stored_file_name: f.filename,
-        file_path: f.path,
-        mime_type: f.mimetype,
-        file_size: f.size,
-      })), { transaction: t });
-    }
+      if (files.length > 0) {
+        await TicketAttachment.bulkCreate(files.map(f => ({
+          ticket_id: ticket.id,
+          original_file_name: f.originalname,
+          stored_file_name: f.filename,
+          file_path: f.path,
+          mime_type: f.mimetype,
+          file_size: f.size,
+        })), { transaction: t });
+      }
 
-    await TicketStatusHistory.create({ ticket_id: ticket.id, old_status: null, new_status: 'OPEN' }, { transaction: t });
-    await TicketAuditLog.create({ ticket_id: ticket.id, action: 'TICKET_CREATED', new_value: ticket_number, metadata: { source: 'PUBLIC_FORM', requester_email } }, { transaction: t });
+      await TicketStatusHistory.create({ ticket_id: ticket.id, old_status: null, new_status: 'OPEN' }, { transaction: t });
+      await TicketAuditLog.create({ ticket_id: ticket.id, action: 'TICKET_CREATED', new_value: ticket_number, metadata: { source: 'PUBLIC_FORM', requester_email } }, { transaction: t });
+      return { ticket, ticket_number, public_token };
+    });
 
-    await t.commit();
-
-    // Send emails asynchronously — do not await
     sendTicketCreatedEmail(ticket).catch(err => logger.error(`Email error: ${err.message}`));
-
     logger.info(`Ticket created: ${ticket_number} by ${requester_email}`);
     return successResponse(res, { ticketNumber: ticket_number, publicToken: public_token }, 'Ticket created successfully', 201);
   } catch (err) {
-    await t.rollback();
     files.forEach(f => { try { fs.unlinkSync(f.path); } catch {} });
     logger.error(`Ticket creation failed: ${err.message}`);
     return errorResponse(res, 'Failed to create ticket', 500);
